@@ -17,6 +17,8 @@ namespace SellableSubs
     {
       SubmarineSelection _ = __instance;
 
+      info($"tosell: " + isCurSub("tosell") + " sold: " + isCurSub("sold"));
+
       updateRepairCost();
 
       if (!_.initialized)
@@ -109,7 +111,7 @@ namespace SellableSubs
           {
             if (subToDisplay.Name != SubmarineSelection.CurrentOrPendingSubmarine().Name)
             {
-              if (subToDisplay.Name == Submarine.MainSub.Info.Name && isCurSubSold())
+              if (subToDisplay.Name == Submarine.MainSub.Info.Name && isCurSub("sold"))
               {
                 _.submarineDisplays[i].submarineFee.Text = "Sold\n";
                 _.submarineDisplays[i].submarineFee.TextColor = Color.DarkRed;

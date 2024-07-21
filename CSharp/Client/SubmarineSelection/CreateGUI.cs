@@ -8,6 +8,7 @@ using System.Linq;
 using Barotrauma;
 using HarmonyLib;
 using Microsoft.Xna.Framework;
+using Barotrauma.Networking;
 
 namespace SellableSubs
 {
@@ -334,12 +335,25 @@ namespace SellableSubs
         font: GUIStyle.SubHeadingFont
       )
       {
-        Selected = isCurSubToSell(),
+        Selected = isCurSub("tosell"),
         OnSelected = (tb) =>
         {
-          bool result = markCurSubAsToSell(tb.Selected);
-          _.RefreshSubmarineDisplay(true);
-          return result;
+          info("OnSelected");
+
+          if (GameMain.IsSingleplayer)
+          {
+            markCurSubAs("tosell", tb.Selected);
+            _.RefreshSubmarineDisplay(true);
+          }
+
+          if (GameMain.IsMultiplayer)
+          {
+            IWriteMessage message = GameMain.LuaCs.Networking.Start("updatetosell");
+            message.WriteBoolean(tb.Selected);
+            GameMain.LuaCs.Networking.Send(message);
+          }
+
+          return tb.Selected;
         }
       };
       //transferInfoFrameWidth -= mixins[_].sellCurrentTickBox.RectTransform.RelativeSize.X;

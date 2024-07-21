@@ -8,6 +8,7 @@ using System.Linq;
 using Barotrauma;
 using HarmonyLib;
 using Microsoft.Xna.Framework;
+using Barotrauma.Networking;
 
 namespace SellableSubs
 {
@@ -16,6 +17,8 @@ namespace SellableSubs
     public static bool SubmarineSelection_SelectSubmarine_Replace(SubmarineInfo info, Rectangle backgroundRect, SubmarineSelection __instance)
     {
       SubmarineSelection _ = __instance;
+
+      if (debug) log($"tosell: " + isCurSub("tosell") + " sold: " + isCurSub("sold"));
 
 #if !DEBUG
       //if (_.selectedSubmarine == info) return false;
@@ -40,8 +43,26 @@ namespace SellableSubs
           {
             mixins[_].sellButton.OnClicked = (button, userData) =>
             {
-              sellOwnedSub(_.selectedSubmarine);
-              _.RefreshSubmarineDisplay(true);
+              if (GameMain.IsSingleplayer)
+              {
+                sellOwnedSub(_.selectedSubmarine);
+                _.RefreshSubmarineDisplay(true);
+              }
+
+              if (GameMain.IsMultiplayer)
+              {
+                if (GameMain.Client.IsServerOwner || GameMain.Client.HasPermission(ClientPermissions.All))
+                {
+                  IWriteMessage message = GameMain.LuaCs.Networking.Start("sellsub");
+                  message.WriteString(_.selectedSubmarine.Name);
+                  GameMain.LuaCs.Networking.Send(message);
+                }
+                else
+                {
+                  new GUIMessageBox("Sry no, ask host to sell this", "Author is too lazy to implement voting, and he can't let everybody sell whatever they want, so only host or players with all permissions can sell other subs");
+                }
+              }
+
               return true;
             };
           }
@@ -66,7 +87,7 @@ namespace SellableSubs
         //_.SetConfirmButtonState();
         if (_.confirmButtonAlt != null)
         {
-          _.confirmButtonAlt.Enabled = _.selectedSubmarine.Name != SubmarineSelection.CurrentOrPendingSubmarine().Name && !isCurSubToSell();
+          _.confirmButtonAlt.Enabled = _.selectedSubmarine.Name != SubmarineSelection.CurrentOrPendingSubmarine().Name && !isCurSub("tosell");
         }
 
         if (_.confirmButton != null)

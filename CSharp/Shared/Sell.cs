@@ -8,16 +8,12 @@ using System.Linq;
 using Barotrauma;
 using HarmonyLib;
 using Microsoft.Xna.Framework;
-using PlayerBalanceElement = Barotrauma.CampaignUI.PlayerBalanceElement;
-
-
 
 namespace SellableSubs
 {
   public partial class Mod : IAssemblyPlugin
   {
-    public static bool? mainSubSold = null;
-    public static bool? mainSubToSell = null;
+    public static Dictionary<string, bool> mainSubStateCache = new Dictionary<string, bool>();
     public static int totalRepairCost = 0;
 
     public static void updateRepairCost()
@@ -37,66 +33,48 @@ namespace SellableSubs
       totalRepairCost = hullRepairCost + itemRepairCost; //+ shuttleRetrieveCost;
     }
 
-    public static bool markCurSubAsSold(bool state = true)
+    public static bool markCurSubAs(string mark, bool state = true)
     {
+      mainSubStateCache ??= new Dictionary<string, bool>();
       if (Submarine.MainSub == null) return false;
 
       foreach (var i in Submarine.MainSub.GetItems(false))
       {
         if (i.HasTag("dock"))
         {
-          if (state) i.AddTag("sold");
-          else i.RemoveTag("sold");
+          if (state) i.AddTag(mark);
+          else i.RemoveTag(mark);
         }
       }
 
-      mainSubSold = state;
-
-      return state; // why do i need to do this???
+      mainSubStateCache[mark] = state;
+      return state;
     }
 
-    public static bool markCurSubAsToSell(bool state)
+    public static bool isCurSub(string mark)
     {
+      mainSubStateCache ??= new Dictionary<string, bool>();
       if (Submarine.MainSub == null) return false;
 
-      foreach (var i in Submarine.MainSub.GetItems(false))
+      if (!mainSubStateCache.ContainsKey(mark))
       {
-        if (i.HasTag("dock"))
-        {
-          if (state) i.AddTag("tosell");
-          else i.RemoveTag("tosell");
-        }
+        mainSubStateCache[mark] = Submarine.MainSub.GetItems(false).Any(i => i.HasTag("dock") && i.HasTag("mark"));
       }
-
-      mainSubToSell = state;
-
-      return state; // why do i need to do this???
-    }
-
-    public static bool isCurSubToSell()
-    {
-      if (Submarine.MainSub == null) return false;
-      if (mainSubToSell == null) mainSubToSell = Submarine.MainSub.GetItems(false).Any(i => i.HasTag("tosell"));
-      return mainSubToSell ?? false;
-    }
-
-    public static bool isCurSubSold()
-    {
-      if (Submarine.MainSub == null) return false;
-      if (mainSubSold == null) mainSubSold = Submarine.MainSub.GetItems(false).Any(i => i.HasTag("sold"));
-      return mainSubSold ?? false;
+      return mainSubStateCache[mark];
     }
 
     // this is selling of owned not selected sub
     public static void sellOwnedSub(SubmarineInfo sub)
     {
       if (!(GameMain.GameSession?.GameMode is CampaignMode campaign)) { return; }
+      if (sub == null) return;
 
       int price = sub.GetPrice();
       Wallet wallet = campaign.Bank;
       wallet.Give(price);
 
-      GameMain.GameSession.OwnedSubmarines.RemoveAll(s => s.Name == sub.Name);
+      int i = GameMain.GameSession.OwnedSubmarines.FindIndex(s => s.Name == sub.Name);
+      if (i != -1) GameMain.GameSession.OwnedSubmarines.RemoveAt(i);
     }
   }
 }

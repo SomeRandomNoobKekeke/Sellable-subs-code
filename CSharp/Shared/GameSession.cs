@@ -17,14 +17,15 @@ namespace SellableSubs
     {
       if (!__result) return;
 
-      if (isCurSubToSell()) markCurSubAsSold();
+      if (isCurSub("tosell")) markCurSubAs("sold");
     }
 
-    public static void clearSoldStates()
+    public static void clearStates()
     {
-      mainSubSold = null;
-      mainSubToSell = null;
+      mainSubStateCache.Clear();
+      totalRepairCost = 0;
 
+#if CLIENT
       if (screens != null)
       {
         screens.Clear();
@@ -36,6 +37,12 @@ namespace SellableSubs
         mixins.Clear();
         mixins = null;
       }
+
+      if (GameMain.GameSession?.Campaign?.CampaignUI?.submarineSelection != null)
+      {
+        GameMain.GameSession.Campaign.CampaignUI.submarineSelection = null;
+      }
+#endif
     }
   }
 }

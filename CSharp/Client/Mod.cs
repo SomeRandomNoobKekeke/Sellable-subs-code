@@ -8,6 +8,7 @@ using System.Linq;
 using Barotrauma;
 using HarmonyLib;
 using Microsoft.Xna.Framework;
+using Barotrauma.Networking;
 
 [assembly: IgnoresAccessChecksTo("Barotrauma")]
 [assembly: IgnoresAccessChecksTo("DedicatedServer")]
@@ -19,28 +20,50 @@ namespace SellableSubs
 {
   public partial class Mod : IAssemblyPlugin
   {
-    public Harmony harmony;
-
-    public static bool showAllSubs = false;
-    public static bool debug = false;
-
-    public static float sellMult = 0.9f;
 
     public static List<SubmarineSelection> screens = new List<SubmarineSelection>();
 
-    public void Initialize()
+    public void InitializeClient()
     {
-      harmony = new Harmony("sellable.subs");
-
-      patchAll();
-
-      if (debug && GameMain.GameSession?.Campaign?.CampaignUI?.submarineSelection != null)
+      if (GameMain.GameSession?.Campaign?.CampaignUI?.submarineSelection != null)
       {
         GameMain.GameSession.Campaign.CampaignUI.submarineSelection = null;
       }
 
+      patchClient();
 
-      if (debug) log("Compiled");
+      GameMain.LuaCs.Networking.Receive("sellsub", (object[] args) =>
+      {
+        IReadMessage msg = args[0] as IReadMessage;
+
+        string subName = msg.ReadString();
+        SubmarineInfo subInfo = GameMain.GameSession.OwnedSubmarines.FirstOrDefault(s => s.Name == subName) ?? SubmarineInfo.SavedSubmarines.FirstOrDefault(s => s.Name == subName);
+
+        sellOwnedSub(subInfo);
+        screens?.ForEach(s => s.RefreshSubmarineDisplay(true));
+      });
+
+      GameMain.LuaCs.Networking.Receive("updatetosell", (object[] args) =>
+      {
+        IReadMessage msg = args[0] as IReadMessage;
+
+        bool state = msg.ReadBoolean();
+
+        markCurSubAs("tosell", state);
+
+        mixins ??= new Dictionary<SubmarineSelection, SubmarineSelectionMixin>();
+        foreach (var m in mixins)
+        {
+          if (m.Value.sellCurrentTickBox != null)
+          {
+            m.Value.sellCurrentTickBox.Selected = state;
+          }
+        }
+
+        screens?.ForEach(s => s.RefreshSubmarineDisplay(true));
+
+        info($"updatetosell {state}");
+      });
     }
 
     public static void SubmarineSelection_Constructor_Postfix(SubmarineSelection __instance)
@@ -49,7 +72,7 @@ namespace SellableSubs
       screens.Add(__instance);
     }
 
-    public void patchAll()
+    public void patchClient()
     {
       harmony.Patch(
         original: typeof(SubmarineSelection).GetMethod("CreateGUI", AccessTools.all),
@@ -67,6 +90,17 @@ namespace SellableSubs
       );
 
       harmony.Patch(
+        original: typeof(SubmarineSelection).GetMethod("ShowBuyPrompt", AccessTools.all),
+        prefix: new HarmonyMethod(typeof(Mod).GetMethod("SubmarineSelection_ShowBuyPrompt_Replace"))
+      );
+
+      harmony.Patch(
+        original: typeof(VotingInterface).GetMethod("SetSubmarineVotingText", AccessTools.all),
+        prefix: new HarmonyMethod(typeof(Mod).GetMethod("VotingInterface_SetSubmarineVotingText_Replace"))
+      );
+
+
+      harmony.Patch(
         original: typeof(SubmarineSelection).GetMethod("SelectSubmarine", AccessTools.all, new Type[]{
           typeof(SubmarineInfo),
           typeof(Rectangle),
@@ -78,48 +112,10 @@ namespace SellableSubs
         original: typeof(SubmarineSelection).GetConstructors()[0],
         postfix: new HarmonyMethod(typeof(Mod).GetMethod("SubmarineSelection_Constructor_Postfix"))
       );
-
-      harmony.Patch(
-        original: typeof(SubmarineInfo).GetMethod("GetPrice", AccessTools.all),
-        postfix: new HarmonyMethod(typeof(Mod).GetMethod("substractMainSubPrice"))
-      );
-
-      harmony.Patch(
-        original: typeof(CampaignMode).GetMethod("SwitchSubs", AccessTools.all),
-        postfix: new HarmonyMethod(typeof(Mod).GetMethod("CampaignMode_SwitchSubs_Postfix"))
-      );
-
-      harmony.Patch(
-        original: typeof(GameSession).GetMethod("TryPurchaseSubmarine", AccessTools.all),
-        postfix: new HarmonyMethod(typeof(Mod).GetMethod("GameSession_TryPurchaseSubmarine_Postfix"))
-      );
-
-      harmony.Patch(
-        original: typeof(GameSession).GetMethod("StartRound", AccessTools.all, new Type[]{
-          typeof(LevelData),
-          typeof(bool),
-          typeof(SubmarineInfo),
-          typeof(SubmarineInfo),
-        }),
-        postfix: new HarmonyMethod(typeof(Mod).GetMethod("clearSoldStates"))
-      );
     }
 
-
-    public static void log(object msg, Color? cl = null, [CallerLineNumber] int lineNumber = 0)
+    public void DisposeClient()
     {
-      if (cl == null) cl = Color.Cyan;
-      DebugConsole.NewMessage($"{lineNumber}| {msg ?? "null"}", cl);
-    }
-
-    public void OnLoadCompleted() { }
-    public void PreInitPatching() { }
-
-    public void Dispose()
-    {
-      harmony.UnpatchAll(harmony.Id);
-      harmony = null;
-
       if (screens != null)
       {
         screens.ForEach(s =>

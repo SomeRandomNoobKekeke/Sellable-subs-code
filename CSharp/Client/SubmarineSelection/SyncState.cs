@@ -15,10 +15,8 @@ namespace SellableSubs
   {
     public static void SyncState(SubmarineSelection _)
     {
-      int linenum = 0;
       try
       {
-
         mixins ??= new Dictionary<SubmarineSelection, SubmarineSelectionMixin>();
 
         bool owned = false;
@@ -35,7 +33,7 @@ namespace SellableSubs
 
         if (mixins.ContainsKey(_))
         {
-          mixins[_].sellCurrentTickBox.hideIf(isCurSubSold() || owned, 0.15f);
+          mixins[_].sellCurrentTickBox.hideIf(isCurSub("sold") || owned, 0.15f);
           mixins[_].sellCurrentTickBox.Text = TextManager.Get("campaignstoretab.sell") + " " + (Submarine.MainSub.Info.DisplayName);
 
           mixins[_].sellCurrentTickBox.RectTransform.Resize(
@@ -52,13 +50,13 @@ namespace SellableSubs
         {
           _.transferItemsTickBox.hideIf(_.IsSelectedSubCurrentSub, 0.2f);
           _.confirmButtonAlt.hideIf(owned, 0.1f);
-          _.confirmButton.hideIf(_.IsSelectedSubCurrentSub && isCurSubSold(), 0.25f);
+          _.confirmButton.hideIf(_.IsSelectedSubCurrentSub && isCurSub("sold"), 0.25f);
         }
 
         if (_.transferService)
         {
           _.transferItemsTickBox.hideIf(_.IsSelectedSubCurrentSub, 0.2f);
-          _.confirmButton.hideIf(_.IsSelectedSubCurrentSub && isCurSubSold(), 0.25f);
+          _.confirmButton.hideIf(_.IsSelectedSubCurrentSub && isCurSub("sold"), 0.25f);
         }
 
 
@@ -68,7 +66,7 @@ namespace SellableSubs
           {
             _.TransferItemsOnSwitch = false;
             _.transferItemsTickBox.hide();
-            _.itemTransferInfoBlock.revealIf(_.confirmButton.Enabled && !isCurSubSold(), 0.6f);
+            _.itemTransferInfoBlock.revealIf(_.confirmButton.Enabled && !isCurSub("sold"), 0.6f);
             _.itemTransferInfoBlock.Text = TextManager.Get("switchingbacktocurrentsub");
           }
           else if (GameMain.GameSession?.Campaign?.PendingSubmarineSwitch?.Name == _.selectedSubmarine.Name)
@@ -96,7 +94,7 @@ namespace SellableSubs
         }
 
       }
-      catch (Exception e) { log(e, Color.Orange); }
+      catch (Exception e) { err(e); }
     }
   }
 }

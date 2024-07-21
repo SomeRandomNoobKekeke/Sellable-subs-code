@@ -27,7 +27,7 @@ namespace SellableSubs
         __result -= totalRepairCost;
       }
 
-      if (!GameMain.GameSession.IsSubmarineOwned(__instance) && isCurSubToSell() && !isCurSubSold() && __instance.Name != Submarine.MainSub.Info.Name)
+      if (!GameMain.GameSession.IsSubmarineOwned(__instance) && isCurSub("tosell") && !isCurSub("sold") && __instance.Name != Submarine.MainSub.Info.Name)
       {
         __result -= Submarine.MainSub.Info.GetPrice();
       }

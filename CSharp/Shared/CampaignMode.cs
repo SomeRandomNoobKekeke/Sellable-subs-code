@@ -18,7 +18,11 @@ namespace SellableSubs
     {
       if (Submarine.MainSub == null) return;
 
-      if (isCurSubSold()) GameMain.GameSession.OwnedSubmarines.RemoveAll(s => s.Name == Submarine.MainSub.Info.Name);
+      if (isCurSub("sold"))
+      {
+        int i = GameMain.GameSession.OwnedSubmarines.FindIndex(s => s.Name == Submarine.MainSub.Info.Name);
+        if (i != -1) GameMain.GameSession.OwnedSubmarines.RemoveAt(i);
+      }
     }
   }
 }
