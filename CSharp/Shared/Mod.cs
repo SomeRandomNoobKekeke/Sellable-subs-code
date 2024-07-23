@@ -22,8 +22,8 @@ namespace SellableSubs
   {
     public Harmony harmony;
 
-    public static bool showAllSubs = true;
-    public static bool debug = true;
+    public static bool showAllSubs = false;
+    public static bool debug = false;
 
     public static float sellMult = 0.9f;
 
