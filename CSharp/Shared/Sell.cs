@@ -58,7 +58,7 @@ namespace SellableSubs
 
       if (!mainSubStateCache.ContainsKey(mark))
       {
-        mainSubStateCache[mark] = Submarine.MainSub.GetItems(false).Any(i => i.HasTag("dock") && i.HasTag("mark"));
+        mainSubStateCache[mark] = Submarine.MainSub.GetItems(false).Any(i => i.HasTag("dock") && i.HasTag(mark));
       }
       return mainSubStateCache[mark];
     }

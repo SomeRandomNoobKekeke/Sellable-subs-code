@@ -25,6 +25,8 @@ namespace SellableSubs
       mainSubStateCache.Clear();
       totalRepairCost = 0;
 
+      info($"round start, tosell = " + isCurSub("tosell").ToString() + " sold = " + isCurSub("sold").ToString());
+
 #if CLIENT
       if (screens != null)
       {
